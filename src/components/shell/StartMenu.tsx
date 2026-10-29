@@ -1,363 +1,412 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
-  Menu,
-  User,
-  Folder,
-  Image as ImageIcon,
-  Settings,
-  Power,
-  Sun,
-  CloudSun,
-  Newspaper,
-  Compass,
+  FolderPlus,
+  FilePlus,
+  RefreshCw,
+  Monitor,
+  Palette,
+  LayoutGrid,
+  Sparkles,
 } from 'lucide-react';
-import { AppId, FileItem } from '../../types/os';
-import { APP_REGISTRY, AppDefinition } from '../../utils/appRegistry';
+import { FileItem, AppId } from '../../types/os';
 import { AppIcon } from '../common/AppIcon';
 import { soundEngine } from '../../utils/sound';
 
-interface StartMenuProps {
-  onLaunchApp: (appId: AppId) => void;
-  onOpenFolder: (loc: FileItem['location']) => void;
-  onPowerAction: (action: 'shutdown' | 'restart' | 'sleep' | 'lock') => void;
-  onClose: () => void;
-  musicNowPlaying?: { title: string; artist: string; isPlaying: boolean };
+interface DesktopProps {
+  wallpaper: string;
+  files: FileItem[];
+  selectedIconId: string | null;
+  onSelectIcon: (id: string | null) => void;
+  onOpenApp: (appId: AppId) => void;
+  onOpenFile: (file: FileItem) => void;
+  onCreateFolder: (name: string, location: FileItem['location']) => void;
+  onCreateFile: (name: string, content: string, location: FileItem['location']) => void;
 }
 
-export const StartMenu: React.FC<StartMenuProps> = ({
-  onLaunchApp,
-  onOpenFolder,
-  onPowerAction,
-  onClose,
-  musicNowPlaying,
+interface ContextMenuState {
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
+export const Desktop: React.FC<DesktopProps> = ({
+  wallpaper,
+  files,
+  selectedIconId,
+  onSelectIcon,
+  onOpenApp,
+  onOpenFile,
+  onCreateFolder,
+  onCreateFile,
 }) => {
-  const [isRailExpanded, setIsRailExpanded] = useState(false);
-  const [showPowerMenu, setShowPowerMenu] = useState(false);
-  const [tileFlipState, setTileFlipState] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false });
+  const [iconSize, setIconSize] = useState<'normal' | 'small' | 'large'>('normal');
 
-  // Periodic tile flipping animation
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setTileFlipState((prev) => !prev);
-    }, 4500);
-    return () => clearInterval(timer);
-  }, []);
+  // Rubber-band marquee selection
+  const [selectionBox, setSelectionBox] = useState<{
+    startX: number;
+    startY: number;
+    currentX: number;
+    currentY: number;
+    active: boolean;
+  }>({ startX: 0, startY: 0, currentX: 0, currentY: 0, active: false });
 
-  const appsList = Object.values(APP_REGISTRY).sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
+  const desktopRef = useRef<HTMLDivElement>(null);
 
-  const handleAppClick = (appId: AppId) => {
+  const systemShortcuts: { id: string; title: string; appId: AppId; icon: string }[] = [
+    { id: 'sc-thispc', title: 'This PC', appId: 'explorer', icon: 'explorer' },
+    { id: 'sc-recycle', title: 'Recycle Bin', appId: 'recyclebin', icon: 'recyclebin' },
+    { id: 'sc-edge', title: 'Microsoft Edge', appId: 'edge', icon: 'edge' },
+  ];
+
+  const desktopFiles = files.filter((f) => f.location === 'desktop' && !f.isRecycled);
+  const recycledCount = files.filter((f) => f.isRecycled).length;
+
+  const quickActions = [
+    { id: 'desktop-thispc', label: 'This PC', appId: 'explorer' as AppId },
+    { id: 'desktop-settings', label: 'Settings', appId: 'settings' as AppId },
+    { id: 'desktop-files', label: 'Docs', appId: 'explorer' as AppId },
+    { id: 'desktop-recycle', label: 'Recycle', appId: 'recyclebin' as AppId },
+  ];
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
     soundEngine.playClick();
-    onLaunchApp(appId);
-    onClose();
+    setContextMenu({
+      x: Math.min(e.clientX, window.innerWidth - 200),
+      y: Math.min(e.clientY, window.innerHeight - 240),
+      visible: true,
+    });
   };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (contextMenu.visible) {
+      setContextMenu({ ...contextMenu, visible: false });
+    }
+
+    if (e.button === 0 && e.target === desktopRef.current) {
+      onSelectIcon(null);
+      setSelectionBox({
+        startX: e.clientX,
+        startY: e.clientY,
+        currentX: e.clientX,
+        currentY: e.clientY,
+        active: true,
+      });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (selectionBox.active) {
+      setSelectionBox((prev) => ({
+        ...prev,
+        currentX: e.clientX,
+        currentY: e.clientY,
+      }));
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (selectionBox.active) {
+      setSelectionBox((prev) => ({ ...prev, active: false }));
+    }
+  };
+
+  const iconDimClass =
+    iconSize === 'small'
+      ? 'w-18 h-18 text-[11px]'
+      : iconSize === 'large'
+      ? 'w-24 h-24 text-xs'
+      : 'w-20 h-20 text-xs';
+
+  const iconGraphicSize = iconSize === 'small' ? 28 : iconSize === 'large' ? 44 : 36;
+
+  const boxLeft = Math.min(selectionBox.startX, selectionBox.currentX);
+  const boxTop = Math.min(selectionBox.startY, selectionBox.currentY);
+  const boxWidth = Math.abs(selectionBox.currentX - selectionBox.startX);
+  const boxHeight = Math.abs(selectionBox.currentY - selectionBox.startY);
 
   return (
     <div
-      onClick={(e) => {
-        e.stopPropagation();
-        setShowPowerMenu(false);
-      }}
-      className="fixed bottom-[44px] left-0 w-full sm:w-[640px] md:w-[720px] h-[540px] bg-[#1f1f1f]/95 backdrop-blur-2xl text-white border-t border-r border-zinc-700/60 shadow-2xl z-50 flex font-sans select-none animate-slideUp overflow-hidden"
+      ref={desktopRef}
+      onContextMenu={handleContextMenu}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      className="fixed inset-0 bottom-[44px] bg-cover bg-center select-none font-sans overflow-hidden"
+      style={{ backgroundImage: `url(${wallpaper})` }}
     >
-      {/* 1. Left Narrow Action Rail */}
-      <div
-        className={`bg-black/30 flex flex-col justify-between py-2 border-r border-zinc-800 transition-all duration-200 z-20 ${
-          isRailExpanded ? 'w-48' : 'w-12'
-        }`}
-      >
-        <div className="flex flex-col gap-1">
-          <button
-            onClick={() => {
-              setIsRailExpanded(!isRailExpanded);
-              soundEngine.playClick();
-            }}
-            title="START"
-            className="flex items-center gap-4 px-3.5 py-2 hover:bg-white/10 rounded-xs transition-colors text-left"
-          >
-            <Menu size={17} className="shrink-0" />
-            {isRailExpanded && <span className="text-xs font-semibold">START</span>}
-          </button>
+      <div className="absolute left-4 top-4 z-20 glass-panel rounded-xl px-3 py-2 desktop-dock">
+        <div className="flex items-center gap-2">
+          <div className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.9)]" />
+          <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-200">System Ready</span>
         </div>
+        <div className="mt-2 flex items-center gap-2 text-xs text-zinc-300">
+          <Sparkles size={14} className="text-blue-300" />
+          <span>Desktop mode • Fast access</span>
+        </div>
+      </div>
 
-        <div className="flex flex-col gap-1 relative">
-          {/* User Profile */}
-          <button
-            onClick={() => {
-              soundEngine.playClick();
-              onPowerAction('lock');
-              onClose();
-            }}
-            title="User Profile"
-            className="flex items-center gap-4 px-3.5 py-2 hover:bg-white/10 rounded-xs transition-colors text-left"
-          >
-            <User size={17} className="shrink-0 text-blue-400" />
-            {isRailExpanded && <span className="text-xs truncate">User</span>}
-          </button>
+      {selectionBox.active && (
+        <div
+          className="fixed border border-blue-400 bg-blue-500/25 pointer-events-none z-30"
+          style={{
+            left: `${boxLeft}px`,
+            top: `${boxTop}px`,
+            width: `${boxWidth}px`,
+            height: `${boxHeight}px`,
+          }}
+        />
+      )}
 
-          {/* Documents */}
-          <button
-            onClick={() => {
-              soundEngine.playClick();
-              onOpenFolder('documents');
-              onClose();
-            }}
-            title="Documents"
-            className="flex items-center gap-4 px-3.5 py-2 hover:bg-white/10 rounded-xs transition-colors text-left"
-          >
-            <Folder size={17} className="shrink-0 text-amber-400" />
-            {isRailExpanded && <span className="text-xs truncate">Documents</span>}
-          </button>
-
-          {/* Pictures */}
-          <button
-            onClick={() => {
-              soundEngine.playClick();
-              onOpenFolder('pictures');
-              onClose();
-            }}
-            title="Pictures"
-            className="flex items-center gap-4 px-3.5 py-2 hover:bg-white/10 rounded-xs transition-colors text-left"
-          >
-            <ImageIcon size={17} className="shrink-0 text-teal-400" />
-            {isRailExpanded && <span className="text-xs truncate">Pictures</span>}
-          </button>
-
-          {/* Settings */}
-          <button
-            onClick={() => {
-              handleAppClick('settings');
-            }}
-            title="Settings"
-            className="flex items-center gap-4 px-3.5 py-2 hover:bg-white/10 rounded-xs transition-colors text-left"
-          >
-            <Settings size={17} className="shrink-0 text-zinc-300" />
-            {isRailExpanded && <span className="text-xs truncate">Settings</span>}
-          </button>
-
-          {/* Power Button */}
-          <div className="relative">
+      <div className="absolute right-4 top-4 z-20 glass-panel rounded-xl p-3 min-w-[230px]">
+        <div className="flex items-center justify-between mb-2">
+          <div className="text-[10px] uppercase tracking-[0.24em] text-zinc-300">Quick access</div>
+          <div className="rounded-full border border-blue-400/40 bg-blue-500/10 px-2 py-0.5 text-[10px] text-blue-100">
+            Live
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {quickActions.map((action) => (
             <button
+              key={action.id}
               onClick={(e) => {
                 e.stopPropagation();
-                setShowPowerMenu(!showPowerMenu);
                 soundEngine.playClick();
+                if (action.appId === 'recyclebin') {
+                  onOpenApp('recyclebin');
+                  return;
+                }
+                onOpenApp(action.appId);
               }}
-              title="Power"
-              className="w-full flex items-center gap-4 px-3.5 py-2 hover:bg-white/10 rounded-xs transition-colors text-left"
+              className="quick-action-btn"
             >
-              <Power size={17} className="shrink-0 text-red-400" />
-              {isRailExpanded && <span className="text-xs truncate">Power</span>}
+              <AppIcon appId={action.appId} size={18} />
+              <span className="text-[11px] font-medium">{action.label}</span>
             </button>
-
-            {/* Power Menu Popover */}
-            {showPowerMenu && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute bottom-full left-12 mb-1 w-44 bg-zinc-800 border border-zinc-700 shadow-xl rounded-sm py-1 z-50 text-xs"
-              >
-                <button
-                  onClick={() => {
-                    onPowerAction('sleep');
-                    onClose();
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-600 transition-colors"
-                >
-                  Sleep
-                </button>
-                <button
-                  onClick={() => {
-                    onPowerAction('shutdown');
-                    onClose();
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-600 transition-colors"
-                >
-                  Shut down
-                </button>
-                <button
-                  onClick={() => {
-                    onPowerAction('restart');
-                    onClose();
-                  }}
-                  className="w-full text-left px-3 py-2 hover:bg-blue-600 transition-colors"
-                >
-                  Restart
-                </button>
-              </div>
-            )}
-          </div>
+          ))}
         </div>
       </div>
 
-      {/* 2. Middle Column: Alphabetical All Apps List */}
-      <div className="w-56 sm:w-60 bg-black/10 overflow-y-auto py-3 px-2 flex flex-col gap-1 border-r border-zinc-800/80 text-xs shrink-0">
-        <div className="px-3 py-1 font-semibold text-zinc-400 uppercase text-[11px] tracking-wider">
-          All apps
-        </div>
-        {appsList.map((app) => (
+      <div className="p-2 flex flex-col flex-wrap gap-2 max-h-full items-start content-start z-10 relative pt-24 pr-40">
+        {systemShortcuts.map((sc) => {
+          const isSelected = selectedIconId === sc.id;
+          return (
+            <div
+              key={sc.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectIcon(sc.id);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                soundEngine.playClick();
+                onOpenApp(sc.appId);
+              }}
+              className={`${iconDimClass} flex flex-col items-center justify-center p-1.5 rounded cursor-pointer transition-colors border group ${
+                isSelected
+                  ? 'bg-blue-600/35 border-blue-400/80 shadow-xs'
+                  : 'border-transparent hover:bg-white/15'
+              }`}
+            >
+              <div className="flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                <AppIcon
+                  appId={sc.icon}
+                  size={iconGraphicSize}
+                  isEmptyRecycleBin={sc.appId === 'recyclebin' && recycledCount === 0}
+                />
+              </div>
+              <span className="text-white text-center truncate max-w-full font-normal leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                {sc.title}
+              </span>
+            </div>
+          );
+        })}
+
+        {desktopFiles.map((file) => {
+          const isSelected = selectedIconId === file.id;
+          return (
+            <div
+              key={file.id}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectIcon(file.id);
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                soundEngine.playClick();
+                onOpenFile(file);
+              }}
+              className={`${iconDimClass} flex flex-col items-center justify-center p-1.5 rounded cursor-pointer transition-colors border group ${
+                isSelected
+                  ? 'bg-blue-600/35 border-blue-400/80 shadow-xs'
+                  : 'border-transparent hover:bg-white/15'
+              }`}
+            >
+              <div className="flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                {file.type === 'folder' ? (
+                  <AppIcon name="folder" size={iconGraphicSize} />
+                ) : file.extension === 'jpg' || file.extension === 'png' ? (
+                  file.content?.startsWith('/src/assets') || file.content?.startsWith('data:') ? (
+                    <img
+                      src={file.content}
+                      alt={file.name}
+                      referrerPolicy="no-referrer"
+                      className="w-8 h-8 object-cover rounded shadow-md border border-white/40"
+                    />
+                  ) : (
+                    <AppIcon appId="photos" size={iconGraphicSize} />
+                  )
+                ) : (
+                  <AppIcon appId={file.extension} size={iconGraphicSize} />
+                )}
+              </div>
+              <span className="text-white text-center truncate max-w-full font-normal leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                {file.name}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {contextMenu.visible && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="fixed bg-white/95 backdrop-blur-xl border border-zinc-300 shadow-xl rounded-sm py-1 z-50 text-xs text-zinc-800 w-48 font-sans animate-fadeIn select-none"
+          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
+        >
           <button
-            key={app.id}
-            onClick={() => handleAppClick(app.id)}
-            className="flex items-center gap-3 px-3 py-2 hover:bg-white/10 rounded-xs transition-colors text-left group"
+            onClick={() => {
+              setIconSize(iconSize === 'normal' ? 'large' : iconSize === 'large' ? 'small' : 'normal');
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center justify-between"
           >
-            <div className="group-hover:scale-110 transition-transform">
-              <AppIcon appId={app.id} size={20} />
+            <div className="flex items-center gap-2">
+              <LayoutGrid size={14} className="text-zinc-500" />
+              <span>Icon size: {iconSize}</span>
             </div>
-            <span className="truncate text-zinc-200 group-hover:text-white">
-              {app.name}
-            </span>
           </button>
-        ))}
-      </div>
 
-      {/* 3. Right Column: Windows 10 Live Tiles Matrix */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
-        {/* Group 1: Life at a glance */}
-        <div>
-          <div className="text-xs font-semibold text-zinc-400 mb-2.5">
-            Life at a glance
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {/* Live Flipping Weather Tile (Wide) */}
-            <div
-              onClick={() => handleAppClick('edge')}
-              className="col-span-2 h-24 bg-gradient-to-br from-blue-600 to-sky-700 p-3 rounded-xs cursor-pointer relative overflow-hidden transition-transform hover:scale-[1.02] shadow-sm"
-            >
-              <div className="h-full flex flex-col justify-between">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold">New York</span>
-                  <CloudSun size={20} className="text-yellow-300" />
-                </div>
-                <div>
-                  <div className="text-2xl font-light font-mono">72°F</div>
-                  <div className="text-[11px] text-blue-100">Partly Sunny · High 76°</div>
-                </div>
-              </div>
-              <span className="absolute bottom-1 right-2 text-[10px] text-blue-200">Weather</span>
-            </div>
+          <button
+            onClick={() => {
+              soundEngine.playClick();
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
+          >
+            <RefreshCw size={14} className="text-zinc-500" />
+            <span>Refresh</span>
+          </button>
 
-            {/* Edge Tile */}
-            <div
-              onClick={() => handleAppClick('edge')}
-              className="h-24 bg-blue-600 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="edge" size={28} />
-              <span className="text-xs font-medium">Microsoft Edge</span>
-            </div>
+          <div className="border-t border-zinc-200 my-1" />
 
-            {/* Photos Live Tile */}
-            <div
-              onClick={() => handleAppClick('photos')}
-              className="h-24 bg-cyan-700 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm relative overflow-hidden"
-            >
-              <AppIcon appId="photos" size={28} />
-              <span className="text-xs font-medium">Photos</span>
-            </div>
+          <button
+            onClick={() => {
+              onCreateFolder('New folder', 'desktop');
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
+          >
+            <FolderPlus size={14} className="text-amber-500" />
+            <span>New folder</span>
+          </button>
 
-            {/* Calculator Tile */}
-            <div
-              onClick={() => handleAppClick('calc')}
-              className="h-24 bg-slate-700 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="calc" size={28} />
-              <span className="text-xs font-medium">Calculator</span>
-            </div>
+          <button
+            onClick={() => {
+              onCreateFile('New Text Document.txt', '', 'desktop');
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
+          >
+            <FilePlus size={14} className="text-blue-500" />
+            <span>New text document</span>
+          </button>
 
-            {/* File Explorer Tile */}
-            <div
-              onClick={() => handleAppClick('explorer')}
-              className="h-24 bg-amber-600 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="explorer" size={28} />
-              <span className="text-xs font-medium">Explorer</span>
-            </div>
+          <div className="border-t border-zinc-200 my-1" />
 
-            {/* Notepad Tile */}
-            <div
-              onClick={() => handleAppClick('notepad')}
-              className="h-24 bg-sky-700 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="notepad" size={28} />
-              <span className="text-xs font-medium">Notepad</span>
-            </div>
+          <button
+            onClick={() => {
+              onOpenApp('settings');
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
+          >
+            <Monitor size={14} className="text-zinc-500" />
+            <span>Display settings</span>
+          </button>
 
-            {/* Settings Tile */}
-            <div
-              onClick={() => handleAppClick('settings')}
-              className="h-24 bg-blue-700 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="settings" size={28} />
-              <span className="text-xs font-medium">Settings</span>
-            </div>
-          </div>
+          <button
+            onClick={() => {
+              onOpenApp('settings');
+              setContextMenu({ ...contextMenu, visible: false });
+            }}
+            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
+          >
+            <Palette size={14} className="text-purple-500" />
+            <span>Personalize</span>
+          </button>
         </div>
-
-        {/* Group 2: Play and explore */}
-        <div>
-          <div className="text-xs font-semibold text-zinc-400 mb-2.5">
-            Play and explore
-          </div>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {/* Groove Music Tile (Wide) */}
-            <div
-              onClick={() => handleAppClick('groove')}
-              className="col-span-2 h-24 bg-gradient-to-br from-indigo-700 to-purple-800 p-3 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <div className="flex items-center justify-between">
-                <AppIcon appId="groove" size={26} />
-                <span className="text-[10px] text-indigo-200">
-                  {musicNowPlaying?.isPlaying ? 'Now Playing' : 'Groove Music'}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs font-semibold truncate">
-                  {musicNowPlaying?.title || 'Lofi Chill Sunset Chords'}
-                </div>
-                <div className="text-[10px] text-zinc-300">
-                  {musicNowPlaying?.artist || 'Groove Virtual Synth'}
-                </div>
-              </div>
-            </div>
-
-            {/* Minesweeper Tile */}
-            <div
-              onClick={() => handleAppClick('minesweeper')}
-              className="h-24 bg-emerald-700 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="minesweeper" size={28} />
-              <span className="text-xs font-medium">Minesweeper</span>
-            </div>
-
-            {/* Paint Tile */}
-            <div
-              onClick={() => handleAppClick('paint')}
-              className="h-24 bg-rose-700 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="paint" size={28} />
-              <span className="text-xs font-medium">Paint</span>
-            </div>
-
-            {/* Command Prompt */}
-            <div
-              onClick={() => handleAppClick('cmd')}
-              className="h-24 bg-zinc-900 border border-zinc-700 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="cmd" size={28} />
-              <span className="text-xs font-medium font-mono text-green-400">Terminal</span>
-            </div>
-
-            {/* Task Manager */}
-            <div
-              onClick={() => handleAppClick('taskmanager')}
-              className="h-24 bg-teal-800 p-2.5 rounded-xs cursor-pointer flex flex-col justify-between hover:scale-[1.02] transition-transform shadow-sm"
-            >
-              <AppIcon appId="taskmanager" size={28} />
-              <span className="text-xs font-medium">Task Manager</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

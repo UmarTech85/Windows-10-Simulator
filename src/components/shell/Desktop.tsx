@@ -1,318 +1,167 @@
-import React, { useState, useRef } from 'react';
-import {
-  FolderPlus,
-  FilePlus,
-  RefreshCw,
-  Monitor,
-  Palette,
-  LayoutGrid,
-} from 'lucide-react';
-import { DesktopIcon, FileItem, AppId } from '../../types/os';
-import { AppIcon } from '../common/AppIcon';
-import { soundEngine } from '../../utils/sound';
+@import "tailwindcss";
 
-interface DesktopProps {
-  wallpaper: string;
-  files: FileItem[];
-  selectedIconId: string | null;
-  onSelectIcon: (id: string | null) => void;
-  onOpenApp: (appId: AppId) => void;
-  onOpenFile: (file: FileItem) => void;
-  onCreateFolder: (name: string, location: FileItem['location']) => void;
-  onCreateFile: (name: string, content: string, location: FileItem['location']) => void;
+:root {
+  color-scheme: dark;
+  --shell-panel: rgba(17, 17, 18, 0.75);
+  --shell-border: rgba(255, 255, 255, 0.08);
+  --glow: rgba(59, 130, 246, 0.38);
 }
 
-interface ContextMenuState {
-  x: number;
-  y: number;
-  visible: boolean;
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html, body, #root {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    user-select: none;
+    -webkit-user-select: none;
+    background:
+      radial-gradient(circle at top left, rgba(59, 130, 246, 0.2), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(168, 85, 247, 0.18), transparent 35%),
+      #000;
+  }
+
+  /* Thin Windows 10 scrollbars */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(140, 140, 140, 0.4);
+    border-radius: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 100, 100, 0.7);
+  }
 }
 
-export const Desktop: React.FC<DesktopProps> = ({
-  wallpaper,
-  files,
-  selectedIconId,
-  onSelectIcon,
-  onOpenApp,
-  onOpenFile,
-  onCreateFolder,
-  onCreateFile,
-}) => {
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>({ x: 0, y: 0, visible: false });
-  const [iconSize, setIconSize] = useState<'normal' | 'small' | 'large'>('normal');
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-  // Rubber-band marquee selection
-  const [selectionBox, setSelectionBox] = useState<{
-    startX: number;
-    startY: number;
-    currentX: number;
-    currentY: number;
-    active: boolean;
-  }>({ startX: 0, startY: 0, currentX: 0, currentY: 0, active: false });
+@keyframes slideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
-  const desktopRef = useRef<HTMLDivElement>(null);
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 
-  // Desktop Icons: System shortcuts + Desktop files
-  const systemShortcuts: { id: string; title: string; appId: AppId; icon: string }[] = [
-    { id: 'sc-thispc', title: 'This PC', appId: 'explorer', icon: 'explorer' },
-    { id: 'sc-recycle', title: 'Recycle Bin', appId: 'recyclebin', icon: 'recyclebin' },
-    { id: 'sc-edge', title: 'Microsoft Edge', appId: 'edge', icon: 'edge' },
-  ];
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(96, 165, 250, 0.42);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(96, 165, 250, 0);
+  }
+}
 
-  const desktopFiles = files.filter((f) => f.location === 'desktop' && !f.isRecycled);
-  const recycledCount = files.filter((f) => f.isRecycled).length;
+.animate-slideUp {
+  animation: slideUp 0.18s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
 
-  const handleContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    soundEngine.playClick();
-    setContextMenu({
-      x: Math.min(e.clientX, window.innerWidth - 200),
-      y: Math.min(e.clientY, window.innerHeight - 240),
-      visible: true,
-    });
-  };
+.animate-slideLeft {
+  animation: slideLeft 0.18s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+}
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (contextMenu.visible) {
-      setContextMenu({ ...contextMenu, visible: false });
-    }
+.animate-fadeIn {
+  animation: fadeIn 0.15s ease-out forwards;
+}
 
-    if (e.button === 0 && e.target === desktopRef.current) {
-      onSelectIcon(null);
-      setSelectionBox({
-        startX: e.clientX,
-        startY: e.clientY,
-        currentX: e.clientX,
-        currentY: e.clientY,
-        active: true,
-      });
-    }
-  };
+.glass-panel {
+  background: rgba(15, 15, 17, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 15px 40px rgba(2, 6, 23, 0.45);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (selectionBox.active) {
-      setSelectionBox((prev) => ({
-        ...prev,
-        currentX: e.clientX,
-        currentY: e.clientY,
-      }));
-    }
-  };
+.quick-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.55rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.9);
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+}
 
-  const handleMouseUp = () => {
-    if (selectionBox.active) {
-      setSelectionBox((prev) => ({ ...prev, active: false }));
-    }
-  };
+.quick-action-btn:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(96, 165, 250, 0.42);
+}
 
-  const iconDimClass =
-    iconSize === 'small'
-      ? 'w-18 h-18 text-[11px]'
-      : iconSize === 'large'
-      ? 'w-24 h-24 text-xs'
-      : 'w-20 h-20 text-xs';
+.start-menu-hero {
+  position: relative;
+  overflow: hidden;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(135deg, rgba(37, 99, 235, 0.42), rgba(14, 165, 233, 0.14)),
+    rgba(17, 17, 18, 0.72);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 12px 32px rgba(2, 6, 23, 0.32);
+}
 
-  const iconGraphicSize = iconSize === 'small' ? 28 : iconSize === 'large' ? 44 : 36;
+.start-menu-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -30% 35%;
+  height: 180px;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.35), transparent 60%);
+  pointer-events: none;
+}
 
-  // Box coordinates
-  const boxLeft = Math.min(selectionBox.startX, selectionBox.currentX);
-  const boxTop = Math.min(selectionBox.startY, selectionBox.currentY);
-  const boxWidth = Math.abs(selectionBox.currentX - selectionBox.startX);
-  const boxHeight = Math.abs(selectionBox.currentY - selectionBox.startY);
+.status-pill {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(15, 23, 42, 0.45);
+  color: rgba(255, 255, 255, 0.85);
+}
 
-  return (
-    <div
-      ref={desktopRef}
-      onContextMenu={handleContextMenu}
-      onMouseDown={handleMouseDown}
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
-      className="fixed inset-0 bottom-[44px] bg-cover bg-center select-none font-sans overflow-hidden"
-      style={{ backgroundImage: `url(${wallpaper})` }}
-    >
-      {/* Rubber-band Marquee Selection Rectangle */}
-      {selectionBox.active && (
-        <div
-          className="fixed border border-blue-400 bg-blue-500/25 pointer-events-none z-30"
-          style={{
-            left: `${boxLeft}px`,
-            top: `${boxTop}px`,
-            width: `${boxWidth}px`,
-            height: `${boxHeight}px`,
-          }}
-        />
-      )}
+.app-tile-glow {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
 
-      {/* Desktop Icons Container */}
-      <div className="p-2 flex flex-col flex-wrap gap-2 max-h-full items-start content-start z-10 relative">
-        {/* System Shortcuts */}
-        {systemShortcuts.map((sc) => {
-          const isSelected = selectedIconId === sc.id;
-          return (
-            <div
-              key={sc.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectIcon(sc.id);
-              }}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                soundEngine.playClick();
-                onOpenApp(sc.appId);
-              }}
-              className={`${iconDimClass} flex flex-col items-center justify-center p-1.5 rounded cursor-pointer transition-colors border group ${
-                isSelected
-                  ? 'bg-blue-600/35 border-blue-400/80 shadow-xs'
-                  : 'border-transparent hover:bg-white/15'
-              }`}
-            >
-              <div className="flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
-                <AppIcon
-                  appId={sc.icon}
-                  size={iconGraphicSize}
-                  isEmptyRecycleBin={sc.appId === 'recyclebin' && recycledCount === 0}
-                />
-              </div>
-              <span className="text-white text-center truncate max-w-full font-normal leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                {sc.title}
-              </span>
-            </div>
-          );
-        })}
+.desktop-dock {
+  animation: pulseGlow 2.8s ease-in-out infinite;
+}
 
-        {/* Desktop Files & Folders */}
-        {desktopFiles.map((file) => {
-          const isSelected = selectedIconId === file.id;
-          return (
-            <div
-              key={file.id}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelectIcon(file.id);
-              }}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                soundEngine.playClick();
-                onOpenFile(file);
-              }}
-              className={`${iconDimClass} flex flex-col items-center justify-center p-1.5 rounded cursor-pointer transition-colors border group ${
-                isSelected
-                  ? 'bg-blue-600/35 border-blue-400/80 shadow-xs'
-                  : 'border-transparent hover:bg-white/15'
-              }`}
-            >
-              <div className="flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
-                {file.type === 'folder' ? (
-                  <AppIcon name="folder" size={iconGraphicSize} />
-                ) : file.extension === 'jpg' || file.extension === 'png' ? (
-                  file.content?.startsWith('/src/assets') || file.content?.startsWith('data:') ? (
-                    <img
-                      src={file.content}
-                      alt={file.name}
-                      referrerPolicy="no-referrer"
-                      className="w-8 h-8 object-cover rounded shadow-md border border-white/40"
-                    />
-                  ) : (
-                    <AppIcon appId="photos" size={iconGraphicSize} />
-                  )
-                ) : (
-                  <AppIcon appId={file.extension} size={iconGraphicSize} />
-                )}
-              </div>
-              <span className="text-white text-center truncate max-w-full font-normal leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                {file.name}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Desktop Right-Click Context Menu */}
-      {contextMenu.visible && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="fixed bg-white/95 backdrop-blur-xl border border-zinc-300 shadow-xl rounded-sm py-1 z-50 text-xs text-zinc-800 w-48 font-sans animate-fadeIn select-none"
-          style={{ top: `${contextMenu.y}px`, left: `${contextMenu.x}px` }}
-        >
-          {/* View size toggle */}
-          <button
-            onClick={() => {
-              setIconSize(iconSize === 'normal' ? 'large' : iconSize === 'large' ? 'small' : 'normal');
-              setContextMenu({ ...contextMenu, visible: false });
-            }}
-            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center justify-between"
-          >
-            <div className="flex items-center gap-2">
-              <LayoutGrid size={14} className="text-zinc-500" />
-              <span>Icon size: {iconSize}</span>
-            </div>
-          </button>
-
-          {/* Refresh */}
-          <button
-            onClick={() => {
-              soundEngine.playClick();
-              setContextMenu({ ...contextMenu, visible: false });
-            }}
-            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
-          >
-            <RefreshCw size={14} className="text-zinc-500" />
-            <span>Refresh</span>
-          </button>
-
-          <div className="border-t border-zinc-200 my-1" />
-
-          {/* New Folder */}
-          <button
-            onClick={() => {
-              onCreateFolder('New folder', 'desktop');
-              setContextMenu({ ...contextMenu, visible: false });
-            }}
-            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
-          >
-            <FolderPlus size={14} className="text-amber-500" />
-            <span>New folder</span>
-          </button>
-
-          {/* New Text Document */}
-          <button
-            onClick={() => {
-              onCreateFile('New Text Document.txt', '', 'desktop');
-              setContextMenu({ ...contextMenu, visible: false });
-            }}
-            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
-          >
-            <FilePlus size={14} className="text-blue-500" />
-            <span>New text document</span>
-          </button>
-
-          <div className="border-t border-zinc-200 my-1" />
-
-          {/* Display Settings */}
-          <button
-            onClick={() => {
-              onOpenApp('settings');
-              setContextMenu({ ...contextMenu, visible: false });
-            }}
-            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
-          >
-            <Monitor size={14} className="text-zinc-500" />
-            <span>Display settings</span>
-          </button>
-
-          {/* Personalize */}
-          <button
-            onClick={() => {
-              onOpenApp('settings');
-              setContextMenu({ ...contextMenu, visible: false });
-            }}
-            className="w-full text-left px-3 py-1.5 hover:bg-zinc-100 flex items-center gap-2"
-          >
-            <Palette size={14} className="text-purple-500" />
-            <span>Personalize</span>
-          </button>
-        </div>
-      )}
-    </div>
-  );
-};

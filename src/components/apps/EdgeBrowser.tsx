@@ -64,6 +64,18 @@ const isGoogleHostUrl = (url: string): boolean => {
   }
 };
 
+const getSafeIframeSrc = (url: string): string | null => {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+};
+
 const getSafeIframeSrc = (url: string): string => {
   try {
     const parsed = new URL(url, 'https://example.invalid');
@@ -3638,7 +3650,8 @@ SmartScreen Protection: Enabled
                 <button
                   onClick={() => {
                     const iframe = document.getElementById(`edge-iframe-${activeTab.id}`) as HTMLIFrameElement | null;
-                    if (iframe) iframe.src = activeTab.url;
+                    const safeSrc = getSafeIframeSrc(activeTab.url);
+                    if (iframe && safeSrc) iframe.src = safeSrc;
                   }}
                   className="px-2 py-1 bg-white dark:bg-zinc-700 hover:bg-zinc-100 dark:hover:bg-zinc-600 rounded border border-zinc-300 dark:border-zinc-600 text-xs flex items-center gap-1 cursor-pointer"
                 >

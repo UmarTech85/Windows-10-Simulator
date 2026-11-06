@@ -64,6 +64,18 @@ const isGoogleHostUrl = (url: string): boolean => {
   }
 };
 
+const getSafeIframeSrc = (url: string): string => {
+  try {
+    const parsed = new URL(url, 'https://example.invalid');
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    // fall through to safe default
+  }
+  return 'about:blank';
+};
+
 interface Tab {
   id: string;
   title: string;
@@ -3675,7 +3687,7 @@ SmartScreen Protection: Enabled
             <div className="flex-1 w-full bg-white relative">
               <iframe
                 id={`edge-iframe-${activeTab.id}`}
-                src={activeTab.url}
+                src={getSafeIframeSrc(activeTab.url)}
                 title={activeTab.title}
                 sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                 className="w-full h-full border-none min-h-[500px]"

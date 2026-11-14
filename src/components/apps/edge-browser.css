@@ -1,0 +1,127 @@
+/* Fluent-inspired browser chrome, scoped to the Edge simulator by its unique tab control. */
+@supports selector(div:has(> button)) {
+  /* Browser window */
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) {
+    border: 1px solid rgb(148 163 184 / 0.32);
+    border-radius: 14px;
+    box-shadow: 0 18px 48px rgb(15 23 42 / 0.16);
+    background: #f4f7fb;
+  }
+
+  /* Tabs strip */
+  div:has(> div > button[title="New Tab (Ctrl+T)]) > div:has(> button[title="New Tab (Ctrl+T)"]) {
+    min-height: 42px;
+    padding-inline: 10px;
+    padding-top: 6px;
+    background: linear-gradient(180deg, #e8eef7 0%, #dce5f1 100%);
+    border-color: #cbd5e1;
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="New Tab (Ctrl+T)"]) > div[class*="rounded-t-md"] {
+    min-width: 120px;
+    max-width: 240px;
+    min-height: 34px;
+    padding-inline: 12px;
+    border-radius: 9px 9px 0 0;
+    transition: background-color 160ms ease, box-shadow 160ms ease;
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="New Tab (Ctrl+T)"]) > div[class*="rounded-t-md"][class*="bg-white"] {
+    background: #fff;
+    border-color: #cbd5e1;
+    box-shadow: 0 -1px 5px rgb(15 23 42 / 0.06);
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="New Tab (Ctrl+T)"]) > button[title="New Tab (Ctrl+T)"] {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    place-items: center;
+    margin: 0 0 2px 3px;
+    border-radius: 9px;
+    background: rgb(255 255 255 / 0.42);
+  }
+
+  /* Navigation toolbar */
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) {
+    min-height: 54px;
+    padding: 8px 14px;
+    background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+    border-color: #dbe3ee;
+    box-shadow: 0 2px 8px rgb(15 23 42 / 0.045);
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) > button {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border-radius: 10px;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) > button:hover:not(:disabled) {
+    background: #eaf1fb;
+    color: #2563eb;
+  }
+
+  /* Address field */
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) form > div {
+    min-height: 36px;
+    padding-inline: 13px;
+    background: #f1f5f9;
+    border-color: #d8e1ec;
+    box-shadow: inset 0 1px 2px rgb(15 23 42 / 0.035);
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) form > div:focus-within {
+    background: #fff;
+    border-color: #60a5fa;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.14);
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) form input {
+    font-size: 13px;
+  }
+
+  /* Favorites bar (the row directly below the address toolbar) */
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) + div {
+    min-height: 34px;
+    padding-inline: 16px;
+    background: #f8fafc;
+    border-color: #e2e8f0;
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) + div button {
+    padding: 4px 9px;
+    border-radius: 7px;
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) + div button:hover {
+    background: #e8eff8;
+    color: #1d4ed8;
+  }
+}
+
+@media (max-width: 640px) {
+  @supports selector(div:has(> button)) {
+    div:has(> div > button[title="New Tab (Ctrl+T)"]) {
+      border-radius: 10px;
+    }
+
+    div:has(> div > button[title="New Tab (Ctrl+T)"]) > div:has(> button[title="Back"]):has(> form) {
+      gap: 5px;
+      padding-inline: 8px;
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) *,
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) *::before,
+  div:has(> div > button[title="New Tab (Ctrl+T)"]) *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
